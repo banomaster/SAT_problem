@@ -75,6 +75,15 @@ class Literal(Formula):
         """
         return self
 
+    def partiallySimplify(self, values):
+        if self.lit in values:
+            if values[self.lit]:
+                return Tru()
+            else:
+                return Fls()
+        return self
+
+
 class Not(Formula):
     """
     The class for negated expressions.
@@ -122,6 +131,17 @@ class Not(Formula):
         elif isinstance(t, Or):
             return And([Not(tt) for tt in t.lst]).simplify()
         return Not(t)
+
+    def partiallySimplify(self, values):
+        simplifiedTerm = self.term.partiallySimplify(values)
+        if (simplifiedTerm == T):
+            return Fls()
+        elif (simplifiedTerm == F):
+            return Tru()
+        else:
+            return Not(simplifiedTerm)
+
+
 
 class Multi(Formula):
     """
@@ -245,6 +265,9 @@ class And(Multi):
         """
         return Or
 
+    def partiallySimplify(self, values):
+        return And(map(lambda x: x.partiallySimplify(values), self.lst))
+
 class Or(Multi):
     """
     The class for disjunctions.
@@ -265,6 +288,9 @@ class Or(Multi):
         Return the dual class of the instance.
         """
         return And
+
+    def partiallySimplify(self, values):
+        return Or(map(lambda x: x.partiallySimplify(values), self.lst))
 
 class Binary(Formula):
     """
