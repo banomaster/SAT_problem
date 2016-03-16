@@ -1,18 +1,24 @@
 
 from boolean import *
+import sys
 
-"Solves the SAT problem for the given formula."
+#Solves the SAT problem for the given formula.
 def solve(frm, values):
-    unitPropagate(frm, values)
+    frm = setUnitValues(frm, values)
+
+    if (frm == T):
+        return values
+    elif (frm == F):
+        return False
+
+    frm = setPureVarsValues(frm, values)
+
     if (frm == T):
         return values
     elif (frm == F):
         return False
 
     l = findFirstLiteral(frm)
-    # print(frm)
-    # print("NEW FRM")
-    # print(newFrm)
     if not l:
         print "SRANJE"
 
@@ -35,7 +41,7 @@ def solve(frm, values):
 
 
 
-def unitPropagate(frm, values):
+def setUnitValues(frm, values):
     while True:
         unitFound = False
         if (not isinstance(frm, And)):
@@ -55,6 +61,30 @@ def unitPropagate(frm, values):
 
         if not unitFound:
             break
+    return frm
+
+def setPureVarsValues(frm, values):
+    dictLit = {}
+    if (not isinstance(frm, And)):
+        frm = And([frm])
+    for orTerm in frm.lst:
+        for term in orTerm.lst:
+            if (isinstance(term, Literal)):
+                if (not term.lit in dictLit):
+                    dictLit[term.lit] = [True, False]
+                else:
+                    dictLit[term.lit][0] = True
+            elif (isinstance(term, Not)):
+                if (not term.term.lit in dictLit):
+                    dictLit[term.term.lit] = [False, True]
+                else:
+                    dictLit[term.term.lit][1] = True
+
+    for key, value in dictLit.iteritems():
+        if (value[0] != value[1]):
+            values[key] = value[0]
+    partiallySimplified = frm.partiallySimplify(values)
+    return partiallySimplified.simplify()
 
 def findFirstLiteral(frm):
     if (isinstance(frm, Literal)):
@@ -68,11 +98,40 @@ def findFirstLiteral(frm):
                 return t
     return False
 
-# test unit propagating
-formulabano = And([Literal("x"), Or([Not(Literal("x")), Not(Literal("y"))]), Or([Literal("z"), Literal("w")]), Literal("y")])
-# unitPropagate(formulabano, {})
+def inputDimacsToFormula():
+    frm = []
+    with open(sys.argv[1]) as f:
+        for line in f:
+            split = line.split(" ")
+            if (split[0] == 'c' or split[0] == 'p'):
+                continue
 
-#
-# formalaFindLit = And([Or([Tru()])])
-# print findFirstLiteral(formalaFindLit)
-print (solve(formulabano, {}))
+            orTerm = []
+            for i in range(len(split)):
+                termNum = int(split[i])
+                if (termNum == 0):
+                    break
+                if termNum < 0:
+                    orTerm.append(Not(Literal(str(abs(termNum)))))
+                else:
+                    orTerm.append(Literal(str(termNum)))
+            frm.append(Or(orTerm))
+    return And(frm)
+
+def outputResultToDimacs(values):
+    newF = open(sys.argv[2],'w')
+    for key, value in values.iteritems():
+        if (value):
+            newF.write(key + " ")
+        else:
+            newF.write("-" + key + " ")
+    newF.close()
+
+def evaluate(frm, values):
+    return frm.partiallySimplify(values).simplify()
+
+
+frm = inputDimacsToFormula()
+resValues = solve(frm, {})
+print (evaluate(frm, resValues))
+outputResultToDimacs(resValues)
