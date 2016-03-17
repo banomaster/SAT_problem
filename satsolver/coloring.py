@@ -1,18 +1,25 @@
 #!/usr/bin/python
 
 from boolean import *
+from dimacsIO import *
+from satsolver import *
+from random import random
+
+def randomGraph(numOfVertices, density):
+    l = []
+    for i in range(numOfVertices):
+        for j in range(i + 1, numOfVertices):
+            if random() < density:
+                l.append((i, j))
+
+    return l
+
 
 def coloring(l,k):
     ZEROS = 3
 
     terms = []
     vertices = set(sum([list(e) for e in l], []))
-    lin = {u: [] for u in vertices}
-    lout = {u: [] for u in vertices}
-    for u, v in l:
-        lin[v].append(u)
-        lout[u].append(v)
-    n = len(vertices)
 
     for v in vertices:
         orTerm = []
@@ -33,5 +40,8 @@ def coloring(l,k):
 
     return And(terms)
 
+formulaColoring = coloring(randomGraph(45, 0.2), 6)
 
-print coloring([(1,2), (1, 3), (2,3)], 3)
+outputFormulaToDimacs(formulaColoring, "./output/coloring100.txt", "Graph coloring SAT")
+
+print solve(formulaColoring, {})
