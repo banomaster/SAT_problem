@@ -1,66 +1,89 @@
 # accepts the CNF as list of lists - or clauses
 # a, - a etc.
+
+import time
+from dimacsIO_opt import *
+
 def solve(formula, values):
+
     formula = setUnitValues(formula, values)
 
-    isSolveFinished(formula)
+    if formula == True or formula == []:
+        return values
+    elif formula == False:
+        return False
 
     formula = setPureVarsValues(formula, values)
+    if formula == True or formula == []:
+        return values
+    elif formula == False:
+        return False
 
-    isSolveFinished(formula)
-
-    selectedUnit = findFirstUnit(formula)
-
+    selectedUnit = findBestUnit(formula)
     if not selectedUnit:
         return "TO NI DOBRO. NI CNF :("
 
     values[selectedUnit] = True
-    # TODO partiallySimplify
 
-    solveTrue = solve(formula, values)
+    formulaTrue = simplify(formula, values)
+
+    solveTrue = solve(formulaTrue, values)
     if solveTrue:
         return solveTrue
 
-    values[selectedUnit] = False
-    # TODO partiallySimplify
 
+    values[selectedUnit] = False
+
+    formulaFalse = simplify(formula, values)
     #return values object if solved or False if not solved
-    return solve(formula, values)
+    return solve(formulaFalse, values)
 
 
 
 def isSolveFinished(formula):
-    if formula == True:
+    if formula == True or formula == []:
         return True
     else:
         return False
 
 
 def simplify(formula, values):
-
-def evaluate(formula, values):
+    newFormula = []
+    #find values
     for clause in formula:
+        if not clause:
+            return False
+        newClause = []
         for term in clause:
+            newTerm = term
             lit = term.replace("-", "")
             if lit in values:
                 if "-" in term:
-                    term = not values[lit]
+                    newTerm = not values[lit]
                 else:
-                    term = values[lit]
-    result = []
-    for clause in formula:
-        clause = [x for x in clause if x]
+                    newTerm = values[lit]
+            newClause.append(newTerm)
+        newFormula.append(newClause)
+    evaluatedFormula = []
+    for clause in newFormula:
+        # filter clause of falses
+        newClause = [x for x in clause if x]
+        # print clause
         # clause is empty
-        if not clause:
+        if not newClause:
             return False
         else:
-            existsVar = False
-            allTrue = True
-            for term in clause:
-                if term == True:
+            if True in newClause:
+                continue
+        evaluatedFormula.append(newClause)
+    return evaluatedFormula
+
 
 def setUnitValues(formula, values):
+
     while True:
+        if isinstance(formula, bool):
+            return formula
         unitFound = False
         for orTerm in formula:
             if len(orTerm) == 1:
@@ -70,7 +93,8 @@ def setUnitValues(formula, values):
                 else:
                     values[orTerm[0]] = True
 
-                # TODO call partiallySimplify
+                unitFound = True
+                formula = simplify(formula, values)
                 break
 
         if not unitFound:
@@ -88,7 +112,7 @@ def setPureVarsValues(formula, values):
                     dictLit[getUnitName(unit)] = [False, True]
                 else:
                     dictLit[getUnitName(unit)][1] = True
-            else
+            else:
                 if not unit in dictLit:
                     dictLit[unit] = [True, False]
                 else:
@@ -98,17 +122,48 @@ def setPureVarsValues(formula, values):
         if (value[0] != value[1]):
             values[key] = value[0]
 
-    # TODO call partiallySimplify
+    return simplify(formula, values)
 
-    return formula
 
 def findFirstUnit(formula):
     for orTerm in formula:
         for unit in orTerm:
             if isinstance(unit, str):
-                return getUnitName
+                return getUnitName(unit)
 
     return False
+
+def findBestUnit(formula):
+    dictLit = {}
+    bestKey = '';
+    bestValue = 0;
+
+    for orTerm in formula:
+        for unit in orTerm:
+            if not isNegated(unit):
+                if not unit in dictLit:
+                    dictLit[unit] = 1 / len(orTerm)
+                    if dictLit[unit] > bestValue:
+                        bestKey = unit
+                        bestValue = dictLit[unit]
+                else:
+                    dictLit[term.lit] +=  1 / len(orTerm)
+                    if dictLit[unit] > bestValue:
+                        bestKey = unit
+                        bestValue = dictLit[unit]
+            elif isNegated(unit):
+                unit = getUnitName(unit)
+                if not unit in dictLit:
+                    dictLit[unit] = 1 / len(orTerm)
+                    if dictLit[unit] > bestValue:
+                        bestKey = unit
+                        bestValue = dictLit[unit]
+                else:
+                    dictLit[unit] +=  1 / len(orTerm)
+                    if dictLit[unit] > bestValue:
+                        bestKey = unit
+                        bestValue = dictLit[unit]
+    return bestKey
 
 
 
@@ -117,3 +172,17 @@ def isNegated(unit):
 
 def getUnitName(unit):
     return unit.translate(None,'-')
+
+formulaTest = inputDimacsToFormula("./dimacs/test.txt")
+print solve(formulaTest, {})
+
+frm = inputDimacsToFormula(sys.argv[1])
+print "Basic"
+startTime = time.time()
+resValues = solve(frm, {})
+print resValues
+endTime = time.time()
+print endTime - startTime
+
+# outputFormulaToDimacs(resValues, sys.argv[2])
+# print setUnitValues([['x'], ['-x', 'y']],{})

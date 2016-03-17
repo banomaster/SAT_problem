@@ -1,5 +1,4 @@
 import sys
-from boolean import *
 
 def inputDimacsToFormula(filePath):
     frm = []
@@ -54,6 +53,6 @@ def outputFormulaToDimacs(formula, filePath, comment):
     newF.write(strOut)
     newF.close()
 
-frm = inputDimacsToFormula("./dimacs/sudoku1.txt")
-print frm
-outputFormulaToDimacs(frm, "./output/sudoku1_dimacs.txt", " This is the sudoku1.txt read from and written back to Dimacs format.")
+# frm = inputDimacsToFormula("./dimacs/sudoku1.txt")
+# print frm
+# outputFormulaToDimacs(frm, "./output/sudoku1_dimacs.txt", " This is the sudoku1.txt read from and written back to Dimacs format.")
