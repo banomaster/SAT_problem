@@ -1,5 +1,6 @@
 
 from boolean import *
+from dimacsIO import *
 import sys
 
 #Solves the SAT problem for the given formula.
@@ -98,40 +99,11 @@ def findFirstLiteral(frm):
                 return t
     return False
 
-def inputDimacsToFormula():
-    frm = []
-    with open(sys.argv[1]) as f:
-        for line in f:
-            split = line.split(" ")
-            if (split[0] == 'c' or split[0] == 'p'):
-                continue
-
-            orTerm = []
-            for i in range(len(split)):
-                termNum = int(split[i])
-                if (termNum == 0):
-                    break
-                if termNum < 0:
-                    orTerm.append(Not(Literal(str(abs(termNum)))))
-                else:
-                    orTerm.append(Literal(str(termNum)))
-            frm.append(Or(orTerm))
-    return And(frm)
-
-def outputResultToDimacs(values):
-    newF = open(sys.argv[2],'w')
-    for key, value in values.iteritems():
-        if (value):
-            newF.write(key + " ")
-        else:
-            newF.write("-" + key + " ")
-    newF.close()
-
 def evaluate(frm, values):
     return frm.partiallySimplify(values).simplify()
 
 
-frm = inputDimacsToFormula()
+frm = inputDimacsToFormula(sys.argv[1])
 resValues = solve(frm, {})
 print (evaluate(frm, resValues))
-outputResultToDimacs(resValues)
+outputResultToDimacs(resValues, sys.argv[2])
