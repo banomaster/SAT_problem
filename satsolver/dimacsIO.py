@@ -72,6 +72,6 @@ def outputFormulaToDimacs(formula, filePath, comment):
     newF.write("p cnf " + str(countVars) + " " + str(countClauses) + "\n")
     newF.write(strOut)
 
-frm = inputDimacsToFormula("./dimacs/sudoku1.txt")
-print frm
-outputFormulaToDimacs(frm, "./output/sudoku1_dimacs2.txt", " This is the sudoku1.txt read from and written back to Dimacs format.")
+# frm = inputDimacsToFormula("./dimacs/sudoku1.txt")
+# print frm
+# outputFormulaToDimacs(frm, "./output/sudoku1_dimacs2.txt", " This is the sudoku1.txt read from and written back to Dimacs format.")

@@ -2,43 +2,47 @@
 # a, - a etc.
 
 import time
+import heapq
+
 from dimacsIO_opt import *
 
 def solve(formula, values):
-
     formula = setUnitValues(formula, values)
+    # print "formula: " + str(formula)
 
-    if formula == True or formula == []:
+    if formula == True:
         return values
     elif formula == False:
         return False
 
     formula = setPureVarsValues(formula, values)
-    if formula == True or formula == []:
+    if formula == True:
         return values
     elif formula == False:
         return False
 
-    selectedUnit = findBestUnit(formula)
+    selectedUnit = findFirstUnit(formula)
+    # print selectedUnit
     if not selectedUnit:
         return "TO NI DOBRO. NI CNF :("
 
-    values[selectedUnit] = True
+    newValues = values.copy()
+    newValues[selectedUnit] = True
 
-    formulaTrue = simplify(formula, values)
+    formulaTrue = simplify(formula, newValues)
+    # print "formula true: " + str(formulaTrue)
 
-    solveTrue = solve(formulaTrue, values)
+    solveTrue = solve(formulaTrue, newValues)
     if solveTrue:
         return solveTrue
 
+    newValues = values.copy()
+    newValues[selectedUnit] = False
 
-    values[selectedUnit] = False
-
-    formulaFalse = simplify(formula, values)
+    formulaFalse = simplify(formula, newValues)
+    # print "formula false: " + str(formulaFalse)
     #return values object if solved or False if not solved
-    return solve(formulaFalse, values)
-
-
+    return solve(formulaFalse, newValues)
 
 def isSolveFinished(formula):
     if formula == True or formula == []:
@@ -76,7 +80,10 @@ def simplify(formula, values):
             if True in newClause:
                 continue
         evaluatedFormula.append(newClause)
-    return evaluatedFormula
+    if len(evaluatedFormula) == 0:
+        return True
+    else:
+        return evaluatedFormula
 
 
 def setUnitValues(formula, values):
@@ -147,7 +154,7 @@ def findBestUnit(formula):
                         bestKey = unit
                         bestValue = dictLit[unit]
                 else:
-                    dictLit[term.lit] +=  1 / len(orTerm)
+                    dictLit[unit] +=  1 / len(orTerm)
                     if dictLit[unit] > bestValue:
                         bestKey = unit
                         bestValue = dictLit[unit]
@@ -171,10 +178,65 @@ def isNegated(unit):
     return '-' in unit
 
 def getUnitName(unit):
-    return unit.translate(None,'-')
+    return unit.replace("-","")
 
-formulaTest = inputDimacsToFormula("./dimacs/test.txt")
-print solve(formulaTest, {})
+def solveImproved(formula, values, ranks):
+    formula = setUnitValues(formula, values)
+
+    if formula == True:
+        return values
+    elif formula == False:
+        return False
+
+    formula = setPureVarsValues(formula, values)
+    if formula == True:
+        return values
+    elif formula == False:
+        return False
+
+    selectedUnit = getLiteralByRank(ranks)
+    # print "SELECTED LITERAL: "
+    # print selectedUnit
+    if not selectedUnit:
+        return "TO NI DOBRO. NI CNF :("
+
+    newValues = values.copy()
+    newValues[selectedUnit] = True
+
+    formulaTrue = simplify(formula, newValues)
+
+    solveTrue = solveImproved(formulaTrue, newValues, ranks)
+    if solveTrue:
+        return solveTrue
+
+    newValues = values.copy()
+    newValues[selectedUnit] = False
+    formulaFalse = simplify(formula, newValues)
+
+    return solveImproved(formulaFalse, newValues, ranks)
+
+def getLiteralRanks(formula):
+    ranksDict = {}
+    ranks = []
+    for clause in formula:
+        for term in clause:
+            lit = term.replace("-", "")
+            if lit in ranksDict:
+                ranksDict[lit] -= 1
+            else:
+                ranksDict[lit] = -1
+    for key, value in ranksDict.iteritems():
+        heapq.heappush(ranks, (value, key))
+    return ranks
+
+def getLiteralByRank(ranks):
+    d = heapq.heappop(ranks)
+    return d[1]
+
+
+# frm = [["w"],["a", "b"], ["-b"], ["c", "d"], ["-d", "-w"]]
+#
+# print solve(frm, {})
 
 frm = inputDimacsToFormula(sys.argv[1])
 print "Basic"
@@ -183,6 +245,18 @@ resValues = solve(frm, {})
 print resValues
 endTime = time.time()
 print endTime - startTime
+# # #
+# if (resValues):
+#     print simplify(frm, resValues)
 
-# outputFormulaToDimacs(resValues, sys.argv[2])
-# print setUnitValues([['x'], ['-x', 'y']],{})
+frm = inputDimacsToFormula(sys.argv[1])
+print "Improved"
+startTime = time.time()
+ranks = getLiteralRanks(frm)
+resValues = solveImproved(frm, {}, ranks)
+print resValues
+endTime = time.time()
+print endTime - startTime
+# #
+# if (resValues):
+#     print simplify(frm, resValues)

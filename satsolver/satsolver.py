@@ -14,8 +14,6 @@ def solve(frm, values):
         return False
 
     frm = setPureVarsValues(frm, values)
-    print "Formula:"
-    print type(frm)
 
     # if isinstance(frm, Tru):
     #     print "TRUE";
@@ -134,7 +132,6 @@ def setPureVarsValues(frm, values):
     return partiallySimplified.simplify()
 
 def findFirstLiteral(frm):
-    print frm
     if (isinstance(frm, Literal)):
         return frm
     elif (isinstance(frm, Not)):
@@ -153,9 +150,7 @@ def findBestLiteral(frm):
 
     if (not isinstance(frm, And)):
         frm = And([frm])
-    print frm
     for orTerm in frm.lst:
-        print orTerm
         for term in orTerm.lst:
             if (isinstance(term, Literal)):
                 if (not term.lit in dictLit):
@@ -192,11 +187,12 @@ startTime = time.time()
 resValues = solve(frm, {})
 endTime = time.time()
 print endTime - startTime
-
-print "Improved"
-startTime = time.time()
-resValuesImproved = solveImproved(frm, {})
-endTime = time.time()
-print endTime - startTime
-print (evaluate(frm, resValues))
-outputResultToDimacs(resValues, sys.argv[2])
+print resValues
+#
+# print "Improved"
+# startTime = time.time()
+# resValuesImproved = solveImproved(frm, {})
+# endTime = time.time()
+# print endTime - startTime
+# print (evaluate(frm, resValues))
+# outputResultToDimacs(resValues, sys.argv[2])

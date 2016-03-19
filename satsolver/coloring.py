@@ -2,7 +2,7 @@
 
 from boolean import *
 from dimacsIO import *
-from satsolver import *
+# from satsolver import *
 from random import random
 
 def randomGraph(numOfVertices, density):
@@ -40,8 +40,8 @@ def coloring(l,k):
 
     return And(terms)
 
-formulaColoring = coloring(randomGraph(45, 0.2), 6)
+formulaColoring = coloring(randomGraph(40, 0.2), 6)
 
-outputFormulaToDimacs(formulaColoring, "./output/coloring100.txt", "Graph coloring SAT")
+outputFormulaToDimacs(formulaColoring, "./output/coloring_small.txt", "Graph coloring SAT")
 
-print solve(formulaColoring, {})
+# print solve(formulaColoring, {})
