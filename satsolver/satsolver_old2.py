@@ -4,7 +4,52 @@
 import time
 import heapq
 
-from dimacsIO import *
+from dimacsIO_opt import *
+
+def solve(formula, values):
+    formula = setUnitValues(formula, values)
+    # print "formula: " + str(formula)
+
+    if formula == True:
+        return values
+    elif formula == False:
+        return False
+
+    formula = setPureVarsValues(formula, values)
+    if formula == True:
+        return values
+    elif formula == False:
+        return False
+
+    selectedUnit = findFirstUnit(formula)
+    # print selectedUnit
+    if not selectedUnit:
+        return "TO NI DOBRO. NI CNF :("
+
+    newValues = values.copy()
+    newValues[selectedUnit] = True
+
+    formulaTrue = simplify(formula, newValues)
+    # print "formula true: " + str(formulaTrue)
+
+    solveTrue = solve(formulaTrue, newValues)
+    if solveTrue:
+        return solveTrue
+
+    newValues = values.copy()
+    newValues[selectedUnit] = False
+
+    formulaFalse = simplify(formula, newValues)
+    # print "formula false: " + str(formulaFalse)
+    #return values object if solved or False if not solved
+    return solve(formulaFalse, newValues)
+
+def isSolveFinished(formula):
+    if formula == True or formula == []:
+        return True
+    else:
+        return False
+
 
 def simplify(formula, values):
     newFormula = []
@@ -135,7 +180,7 @@ def isNegated(unit):
 def getUnitName(unit):
     return unit.replace("-","")
 
-def solve(formula, values):
+def solveImproved(formula, values, ranks):
     formula = setUnitValues(formula, values)
 
     if formula == True:
@@ -149,27 +194,27 @@ def solve(formula, values):
     elif formula == False:
         return False
 
-    selectedUnit = findFirstUnit(formula)
-
+    selectedUnit = getLiteralByRank(ranks)
     if not selectedUnit:
-        return "ERROR"
+        return "TO NI DOBRO. NI CNF :("
 
-    values[selectedUnit] = True
+    values[selectedUnit[1]] = True
 
     formulaTrue = simplify(formula, values)
 
-    solveTrue = solve(formulaTrue, values)
-    del values[selectedUnit]
+    solveTrue = solveImproved(formulaTrue, values, ranks)
+    del values[selectedUnit[1]]
+    heapq.heappush(ranks, selectedUnit)
 
     if solveTrue:
         return solveTrue
 
-    values[selectedUnit] = False
+    values[selectedUnit[1]] = False
     formulaFalse = simplify(formula, values)
 
-    solveFalse = solve(formulaFalse, values)
-    del values[selectedUnit]
-
+    solveFalse = solveImproved(formulaFalse, values,ranks)
+    del values[selectedUnit[1]]
+    heapq.heappush(ranks, selectedUnit)
     return solveFalse
 
 def getLiteralRanks(formula):
@@ -190,19 +235,31 @@ def getLiteralByRank(ranks):
     d = heapq.heappop(ranks)
     return d
 
-isOpt = False
-# if len(sys.argv) >=3:
-#     if (sys.argv[2] == "OPT"):
-#         isOpt = True
-# print "OPT: " + str(isOpt)
+
+# frm = [["w"],["a", "b"], ["-b"], ["c", "d"], ["-d", "-w"]]
+#
+# print solve(frm, {})
+
 frm = inputDimacsToFormula(sys.argv[1])
-ranks = getLiteralRanks(frm)
+print "Basic"
 startTime = time.time()
 resValues = solve(frm, {})
 # print resValues
 endTime = time.time()
-print "Time:" + str(endTime - startTime)
-if resValues:
-    print True
-else:
-    print False
+print endTime - startTime
+if (resValues):
+    print simplify(frm, resValues)
+
+
+
+frm = inputDimacsToFormula(sys.argv[1])
+print "Improved"
+startTime = time.time()
+ranks = getLiteralRanks(frm)
+resValues = solveImproved(frm, {}, ranks)
+# print resValues
+endTime = time.time()
+print endTime - startTime
+#
+if (resValues):
+    print simplify(frm, resValues)

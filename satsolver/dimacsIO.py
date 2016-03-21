@@ -1,5 +1,4 @@
 import sys
-from boolean import *
 
 def inputDimacsToFormula(filePath):
     frm = []
@@ -14,12 +13,10 @@ def inputDimacsToFormula(filePath):
                 termNum = int(split[i])
                 if (termNum == 0):
                     break
-                if termNum < 0:
-                    orTerm.append(Not(Literal(str(abs(termNum)))))
                 else:
-                    orTerm.append(Literal(str(termNum)))
-            frm.append(Or(orTerm))
-    return And(frm)
+                    orTerm.append(str(termNum))
+            frm.append(orTerm)
+    return frm
 
 def outputResultToDimacs(values, filePath):
     newF = open(filePath,'w')
@@ -37,41 +34,25 @@ def outputFormulaToDimacs(formula, filePath, comment):
     variables = {}
     countClauses = 0
     strOut = ""
-    for orTerm in formula.lst:
+    for orTerm in formula:
         countClauses += 1
         line = ""
-        if (isinstance(orTerm, Literal)):
-            lit = orTerm.lit
+        for term in orTerm:
+            lit = term.replace("-", "")
             if lit not in variables:
                 countVars += 1
                 variables[lit] = str(countVars)
-            line += variables[lit] + " 0\n"
-        elif (isinstance(orTerm, Not)):
-            lit = orTerm.term.lit
-            if lit not in variables:
-                countVars += 1
-                variables[lit] = str(countVars)
-            line += "-" + variables[lit] + " 0\n"
-        else:
-            line = ""
-            for term in orTerm.lst:
-                if (isinstance(term, Literal)):
-                    lit = term.lit
-                    if lit not in variables:
-                        countVars += 1
-                        variables[lit] = str(countVars)
-                    line += variables[lit] + " "
-                elif (isinstance(term, Not)):
-                    lit = term.term.lit
-                    if lit not in variables:
-                        countVars += 1
-                        variables[lit] = str(countVars)
-                    line += "-" + variables[lit] + " "
-            line += "0\n"
+            if "-" in term:
+                line += "-" + variables[lit] + " "
+            else:
+                line += variables[lit] + " "
+
+        line += "0\n"
         strOut += line
     newF.write("p cnf " + str(countVars) + " " + str(countClauses) + "\n")
     newF.write(strOut)
+    newF.close()
 
 # frm = inputDimacsToFormula("./dimacs/sudoku1.txt")
 # print frm
-# outputFormulaToDimacs(frm, "./output/sudoku1_dimacs2.txt", " This is the sudoku1.txt read from and written back to Dimacs format.")
+# outputFormulaToDimacs(frm, "./output/sudoku1_dimacs.txt", " This is the sudoku1.txt read from and written back to Dimacs format.")
