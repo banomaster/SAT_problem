@@ -1,208 +1,219 @@
-# accepts the CNF as list of lists - or clauses
-# a, - a etc.
-
 import time
-import heapq
-
+import sys
+import copy
 from dimacsIO import *
 
-def simplify(formula, values):
-    newFormula = []
-    #find values
-    for clause in formula:
-        if not clause:
-            return False
-        newClause = []
-        for term in clause:
-            newTerm = term
-            lit = term.replace("-", "")
-            if lit in values:
-                if "-" in term:
-                    newTerm = not values[lit]
-                else:
-                    newTerm = values[lit]
-            newClause.append(newTerm)
-        newFormula.append(newClause)
-    evaluatedFormula = []
-    for clause in newFormula:
-        # filter clause of falses
-        newClause = [x for x in clause if x]
-        # print clause
-        # clause is empty
-        if not newClause:
-            return False
-        else:
-            if True in newClause:
+def inputDimacsToFormula(filePath):
+    frm = []
+    dictLit = {}
+    countClauses = 0
+    with open(filePath) as f:
+        for line in f:
+            split = line.split(" ")
+            if (split[0] == 'c' or split[0] == 'p'):
                 continue
-        evaluatedFormula.append(newClause)
-    if len(evaluatedFormula) == 0:
-        return True
-    else:
-        return evaluatedFormula
 
-
-def setUnitValues(formula, values):
-
-    while True:
-        if isinstance(formula, bool):
-            return formula
-        unitFound = False
-        for orTerm in formula:
-            if len(orTerm) == 1:
-                unitFound == True
-                if isNegated(orTerm[0]):
-                    values[getUnitName(orTerm[0])] = False
+            orTerm = []
+            for i in range(len(split)):
+                term = split[i]
+                if (term[0] == "0"):
+                    break
                 else:
-                    values[orTerm[0]] = True
+                    lit = term.replace("-", "")
+                    if lit not in dictLit:
+                        dictLit[lit] = ([],[])
 
+                    if "-" not in term:
+                        dictLit[lit][0].append(countClauses)
+                    else:
+                        dictLit[lit][1].append(countClauses)
+                    orTerm.append(term)
+            frm.append(orTerm)
+            countClauses+=1
+    return (frm, dictLit)
+
+def simplifyWithValue(formula, dictLit, values, lit, value, changesFrm, changesDictLit, valuesSet ):
+    valuesSet.append(lit)
+    values[lit] = value
+    # print "IN simplifyWithValue"
+    changesDictLit.append((lit, dictLit[lit][:]))
+    for i in dictLit[lit][0]:
+        changesFrm.append((i,formula[i][:]))
+        if value == True:
+            for neighbourTerm in formula[i]:
+                neighbourLit = neighbourTerm.replace("-", "")
+                if neighbourLit != lit:
+                    changesDictLit.append((neighbourLit, (dictLit[neighbourLit][0][:], dictLit[neighbourLit][1][:]) ))
+                    if i in dictLit[neighbourLit][0]:
+                        dictLit[neighbourLit][0].remove(i)
+                    if i in dictLit[neighbourLit][1]:
+                        dictLit[neighbourLit][1].remove(i)
+                if len(dictLit[neighbourLit][0]) + len(dictLit[neighbourLit][1]) == 0:
+                    del dictLit[neighbourLit]
+            formula[i] = True
+        else:
+            if lit in formula[i]:
+                formula[i].remove(lit)
+            if len(formula[i]) == 0:
+                # print "FORMULA BEFORE REVERT: "
+                # print formula
+                return False
+
+    for i in dictLit[lit][1]:
+        changesFrm.append((i,formula[i][:]))
+        if value == False:
+            for neighbourTerm in formula[i]:
+                neighbourLit = neighbourTerm.replace("-", "")
+                if neighbourLit != lit:
+                    changesDictLit.append((neighbourLit, (dictLit[neighbourLit][0][:], dictLit[neighbourLit][1][:])))
+                    if i in dictLit[neighbourLit][0]:
+                        dictLit[neighbourLit][0].remove(i)
+                    if i in dictLit[neighbourLit][1]:
+                        dictLit[neighbourLit][1].remove(i)
+                if len(dictLit[neighbourLit][0]) + len(dictLit[neighbourLit][1]) == 0:
+                    del dictLit[neighbourLit]
+            formula[i] = True
+        else:
+            term = "-" + lit
+            if term in formula[i]:
+                formula[i].remove(term)
+            if len(formula[i]) == 0:
+                # print "FORMULA BEFORE REVERT: "
+                # print formula
+                return False
+
+    del dictLit[lit]
+
+    # print "FORMULA:"
+    # print formula
+    # print "DICT LIT:"
+    # print dictLit
+    # print "CHANGES FRM:"
+    # print changesFrm
+    # print "CHANGES DICT LIT:"
+    # print changesDictLit
+    # print "VALUES SET:"
+    # print valuesSet
+
+    return True
+
+def solve(formula, values, dictLit):
+    # print "START OF RECURSION: "
+    # print formula
+    changesFrm = []
+    changesDictLit = []
+    valuesSet = []
+
+    # print dictLit
+
+    unsat = False
+    # print "SETTING UNIT"
+    # clear units
+    while True:
+        unitFound = False
+        for key, value in dictLit.iteritems():
+            isUnit = False
+            unitVal = False
+            for i in value[0]:
+                if len(formula[i]) == 1:
+                    isUnit = True
+                    unitVal = True
+                    break
+            for i in value[1]:
+                if len(formula[i]) == 1:
+                    isUnit = True
+                    unitVal = False
+                    break
+            if isUnit:
+                # print "FOUND UNIT: " + key + " " + str(unitVal)
                 unitFound = True
-                formula = simplify(formula, values)
+                unsat = not simplifyWithValue(formula, dictLit, values, key, unitVal, changesFrm, changesDictLit, valuesSet)
                 break
-
-        if not unitFound:
+        if not unitFound or unsat:
             break
 
-    return formula
-
-def setPureVarsValues(formula, values):
-    dictLit = {}
-
-    for orTerm in formula:
-        for unit in orTerm:
-            if isNegated(unit):
-                if not getUnitName(unit) in dictLit:
-                    dictLit[getUnitName(unit)] = [False, True]
-                else:
-                    dictLit[getUnitName(unit)][1] = True
-            else:
-                if not unit in dictLit:
-                    dictLit[unit] = [True, False]
-                else:
-                    dictLit[unit][0] = True
-
-    for key, value in dictLit.iteritems():
-        if (value[0] != value[1]):
-            values[key] = value[0]
-
-    return simplify(formula, values)
-
-
-def findFirstUnit(formula):
-    for orTerm in formula:
-        for unit in orTerm:
-            if isinstance(unit, str):
-                return getUnitName(unit)
-
-    return False
-
-def findBestUnit(formula):
-    dictLit = {}
-    bestKey = '';
-    bestValue = 0;
-    bestKey = getUnitName(formula[0][0])
-    for orTerm in formula:
-        for unit in orTerm:
-            if not isNegated(unit):
-                if not unit in dictLit:
-                    dictLit[unit] = 1 / len(orTerm)
-                    if dictLit[unit] > bestValue:
-                        bestKey = unit
-                        bestValue = dictLit[unit]
-                else:
-                    dictLit[unit] +=  1 / len(orTerm)
-                    if dictLit[unit] > bestValue:
-                        bestKey = unit
-                        bestValue = dictLit[unit]
-            elif isNegated(unit):
-                unit = getUnitName(unit)
-                if not unit in dictLit:
-                    dictLit[unit] = 1 / len(orTerm)
-                    if dictLit[unit] > bestValue:
-                        bestKey = unit
-                        bestValue = dictLit[unit]
-                else:
-                    dictLit[unit] +=  1 / len(orTerm)
-                    if dictLit[unit] > bestValue:
-                        bestKey = unit
-                        bestValue = dictLit[unit]
-    return bestKey
-
-
-
-def isNegated(unit):
-    return '-' in unit
-
-def getUnitName(unit):
-    return unit.replace("-","")
-
-def solve(formula, values):
-    formula = setUnitValues(formula, values)
-
-    if formula == True:
-        return values
-    elif formula == False:
+    # revert the changes made
+    if unsat:
+        revertChanges(formula, dictLit, values, changesFrm, changesDictLit, valuesSet)
         return False
+    elif len(dictLit) == 0:
+        return True
 
-    formula = setPureVarsValues(formula, values)
-    if formula == True:
-        return values
-    elif formula == False:
+    # pure vars
+    # print "SETTING PURE VARS"
+    unsat = False
+    while True:
+        pureVarFound = False
+        for key, value in dictLit.iteritems():
+            if len(value[0]) == 0  or len (value[1]) == 0:
+                # print "PURE VAR FOUND " + key
+                pureVarFound == True
+                unsat = not simplifyWithValue(formula, dictLit, values, key, not len(value[0]) == 0, changesFrm, changesDictLit, valuesSet)
+                break
+        if not pureVarFound or unsat:
+            break
+
+    if unsat:
+        # print "UNSAT"
+        revertChanges(formula, dictLit, values, changesFrm, changesDictLit, valuesSet)
         return False
+    elif len(dictLit) == 0:
+        return True
 
-    selectedUnit = findFirstUnit(formula)
+    lit, clauses = dictLit.items()[0]
+    # print "TRUE VAR: " + lit
+    simplifyWithValue(formula, dictLit, values, lit, True, changesFrm, changesDictLit, valuesSet)
 
-    if not selectedUnit:
-        return "ERROR"
+    res = solve(formula, values, dictLit)
+    if res != False:
+        return values
 
-    values[selectedUnit] = True
+    revertChanges(formula, dictLit, values, changesFrm, changesDictLit, valuesSet)
 
-    formulaTrue = simplify(formula, values)
+    # print "FALSE VAR: " + lit
+    simplifyWithValue(formula, dictLit, values, lit, False, changesFrm, changesDictLit, valuesSet)
 
-    solveTrue = solve(formulaTrue, values)
-    del values[selectedUnit]
+    res = solve(formula, values, dictLit)
+    if res != False:
+        return values
+    revertChanges(formula, dictLit, values, changesFrm, changesDictLit, valuesSet)
+    return res
 
-    if solveTrue:
-        return solveTrue
+def revertChanges(formula, dictLit, values, changesFrm, changesDictLit, valuesSet):
+    # print "REVERT CHANGES"
+    for i in range(len(changesFrm)):
+        change = changesFrm.pop()
+        formula[change[0]] = change[1]
+    for i in range(len(changesDictLit)):
+        change = changesDictLit.pop()
+        dictLit[change[0]] = change[1]
+    for i in range(len(valuesSet)):
+        del values[valuesSet.pop()]
+    changesFrm = []
+    changesDictLit = []
+    valuesSet = []
 
-    values[selectedUnit] = False
-    formulaFalse = simplify(formula, values)
+    # print "FORMULA:"
+    # print formula
+    # print "DICT LIT:"
+    # print dictLit
+    # print "VALUES: "
+    # print values
 
-    solveFalse = solve(formulaFalse, values)
-    del values[selectedUnit]
 
-    return solveFalse
-
-def getLiteralRanks(formula):
-    ranksDict = {}
-    ranks = []
-    for clause in formula:
-        for term in clause:
-            lit = term.replace("-", "")
-            if lit in ranksDict:
-                ranksDict[lit] -= 1
-            else:
-                ranksDict[lit] = -1
-    for key, value in ranksDict.iteritems():
-        heapq.heappush(ranks, (value, key))
-    return ranks
-
-def getLiteralByRank(ranks):
-    d = heapq.heappop(ranks)
-    return d
-
-isOpt = False
-# if len(sys.argv) >=3:
-#     if (sys.argv[2] == "OPT"):
-#         isOpt = True
-# print "OPT: " + str(isOpt)
-frm = inputDimacsToFormula(sys.argv[1])
-ranks = getLiteralRanks(frm)
+frm, dictLit = inputDimacsToFormula(sys.argv[1])
+# frm = [["-a", "b"], ["c", "-w"], ["a", "-c"], ["-a", "-b"], ["-w", "-b"] ]
+# dictLit = {'a':([2], [0,3]), 'b':([0],[3, 4]), 'c':([1], [2]), 'w':([],[1,4])}
 startTime = time.time()
-resValues = solve(frm, {})
-# print resValues
+values = {}
+SAT = solve(frm, values, dictLit)
+# print SAT
+# print SAT
 endTime = time.time()
 print "Time:" + str(endTime - startTime)
-if resValues:
-    print True
+if SAT:
+    #print values
+    print "SATISFIABLE"
+    outputResultToDimacs(values, sys.argv[2])
 else:
-    print False
+    print "UNSATISFIABLE"

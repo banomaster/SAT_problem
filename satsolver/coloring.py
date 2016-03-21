@@ -80,9 +80,9 @@ def coloring(l,k):
 #
 # outputFormulaToDimacs(formulaColoring, "./output/coloring_60.txt", "Graph coloring SAT")
 
-g = convertToEdgeList(genPrefferentialAttModel(600, 1200))
+g = convertToEdgeList(genPrefferentialAttModel(1000, 2000))
 formulaColoring = coloring(g, 6)
-outputFormulaToDimacs(formulaColoring, "./output/coloring_pref_600_1200.txt", "Graph coloring SAT")
+outputFormulaToDimacs(formulaColoring, "./output/coloring_pref_1000_2000.txt", "Graph coloring SAT")
 
 
 
