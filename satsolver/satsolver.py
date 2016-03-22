@@ -9,14 +9,14 @@ def inputDimacsToFormula(filePath):
     countClauses = 0
     with open(filePath) as f:
         for line in f:
-            split = line.split(" ")
+            split = line.strip().split(" ")
             if (split[0] == 'c' or split[0] == 'p'):
                 continue
 
             orTerm = []
             for i in range(len(split)):
                 term = split[i]
-                if (term[0] == "0"):
+                if (len(term) == 0 or term[0] == "0"):
                     break
                 else:
                     lit = term.replace("-", "")
